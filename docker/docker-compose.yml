@@ -1,0 +1,88 @@
+version: "2.1"
+services:
+  mariadb:
+    image: linuxserver/mariadb
+    container_name: mariadb
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - TZ=America/Argentina/Buenos_Aires
+      - MYSQL_USER=${GITEA_USER}
+      - MYSQL_PASSWORD=${GITEA_PASS}
+      - MYSQL_DATABASE=${GITEA_DB}
+    volumes:
+      - /home/pi/docker/mariadb:/config
+    ports:
+      - 3306:3306
+    restart: unless-stopped
+  swag:
+    image: linuxserver/swag
+    container_name: swag
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Argentina/Buenos_Aires
+      - URL=${ABSOLUTE_URI}
+      - VALIDATION=duckdns
+      - DUCKDNSTOKEN=${DUCKDNSTOKEN}
+      - SUBDOMAINS=
+    volumes:
+      - /home/pi/docker/swag:/config
+    ports:
+      - 10000:443
+      - 80:80
+    restart: unless-stopped
+  phpmyadmin:
+    image: phpmyadmin
+    container_name: phpmyadmin
+    restart: always
+    environment:
+      - PMA_HOST=mariadb
+      # - PMA_ARBITRARY=1
+      - PMA_ABSOLUTE_URI=https://${ABSOLUTE_URI}:10000/phpmyadmin/
+    ports:
+      - 8080:80
+    volumes:
+      - /home/pi/docker/phpmyadmin:/var/tmp
+      - /home/pi/docker/phpmyadmin/config.user.inc.php:/etc/phpmyadmin/config.user.inc.php
+      - /sessions
+    links:
+      - mariadb
+  gitea:
+    image: gitea/gitea:latest
+    container_name: gitea
+    volumes:
+      - /home/pi/docker/gitea:/data
+    ports:
+      - 3003:3000
+      - "2222:22"
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=mysql
+      - GITEA__database__HOST=mariadb:3306
+      - GITEA__database__NAME=${GITEA_DB}
+      - GITEA__database__USER=${GITEA_USER}
+      - GITEA__database__PASSWD=${GITEA_PASS}
+    depends_on:
+      - mariadb
+    restart: always
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: mosquitto
+    user: "1000:1000"
+    ports:
+      - 1883:1883
+      - 8883:8883
+    volumes:
+      - /home/pi/docker/mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - /home/pi/docker/mosquitto/config:/mosquitto/config
+      - /home/pi/docker/swag/etc/letsencrypt/archive/${ABSOLUTE_URI}/chain1.pem:/mosquitto/config/chain.pem
+      - /home/pi/docker/swag/etc/letsencrypt/archive/${ABSOLUTE_URI}/cert1.pem:/mosquitto/config/cert.pem
+      - /home/pi/docker/swag/etc/letsencrypt/archive/${ABSOLUTE_URI}/privkey1.pem:/mosquitto/config/privkey.pem
+      - /home/pi/docker/mosquitto/data:/mosquitto/data
+      - /home/pi/docker/mosquitto/log:/mosquitto/log
+    restart: unless-stopped
