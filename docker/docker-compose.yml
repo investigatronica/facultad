@@ -86,3 +86,21 @@ services:
       - /home/pi/docker/mosquitto/data:/mosquitto/data
       - /home/pi/docker/mosquitto/log:/mosquitto/log
     restart: unless-stopped
+  grafana:
+    image: grafana/grafana:8.1.4
+    container_name: grafana
+    user: "1000"
+    volumes:
+      - /home/pi/docker/grafana/lib:/var/lib/grafana
+    ports:
+      - 3000:3000
+    depends_on:
+      - mariadb
+    environment:
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_SERVER_PROTOCOL=http
+      - GF_SERVER_ROOT_URL=https://${ABSOLUTE_URI}:10000/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_SERVER_DOMAIN=${ABSOLUTE_URI}
+    restart: unless-stopped
+
