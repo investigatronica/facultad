@@ -8,7 +8,7 @@ def on_connect(mqttc, obj, flags, rc):
 
 def on_message(mqttc, obj, msg):
     datos=json.loads(msg.payload.decode('utf8'))
-    # print (datos)
+    # print (msg.topic)
     connection = pymysql.connect(host='localhost',
                              user='sensores',
                              password=os.getenv("MYSQL_SENS_PASSWORD"),
@@ -19,7 +19,7 @@ def on_message(mqttc, obj, msg):
         with connection.cursor() as cursor:
             # Create a new record
             sql = "INSERT INTO `mediciones` (`sensor_id`, `temperatura`, `humedad`) VALUES (%s, %s, %s)"
-            cursor.execute(sql, (datos['sensor_id'], datos['temperatura'], datos['humedad']))
+            cursor.execute(sql, (msg.topic, datos['temperatura'], datos['humedad']))
             connection.commit()
 
 def on_subscribe(mqttc, obj, mid, granted_qos):
